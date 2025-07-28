@@ -64,8 +64,9 @@ async function handleOfferWithPopup(fromId, offer) {
     const hasVideo = parsedOffer.sdp.includes('m=video');
     const callType = hasVideo ? 'video' : 'audio';
 
-    console.log("Showing popup for call type:", callType);
+    //console.log("Showing popup for call type:", callType);
     // Hiển thị popup với offer data
+    console.log(fromId, callType, offer);
     showCallPopup(fromId, callType, offer);
 
   } catch (error) {

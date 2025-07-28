@@ -78,18 +78,19 @@ function clearVideos() {
 
 // Hiển thị popup cuộc gọi đến
 function showCallPopup(fromUserId, callType, offerData = null) {
+    console.log("Showing call popup");
   if (callPopup) {
     // Cập nhật thông tin cuộc gọi
     if (callerNameDiv) callerNameDiv.textContent = fromUserId;
     if (callTypeDiv) callTypeDiv.textContent = `Cuộc gọi ${callType}`;
     if (callTimeDiv) callTimeDiv.textContent = new Date().toLocaleTimeString();
-    
+    console.log("offerData received in showCallPopup:", offerData);
     // Lưu thông tin cuộc gọi và offer (nếu có)
     pendingCall = { fromUserId, callType };
     if (offerData) {
       pendingOffer = { fromId: fromUserId, offer: offerData };
     }
-    
+    console.log("Pending call data set:", pendingOffer);
     // Hiển thị popup
     callPopup.style.display = 'flex';
     
@@ -114,7 +115,6 @@ async function acceptIncomingCall() {
   if (!pendingCall) return;
   
   console.log("Accepting call from:", pendingCall.fromUserId);
-  hideCallPopup();
   
   // Nếu có offer đang chờ, xử lý offer
   if (pendingOffer) {
@@ -125,6 +125,9 @@ async function acceptIncomingCall() {
     // Fallback: chỉ setup media nếu không có offer
     await handleIncomingCall(pendingCall.fromUserId, pendingCall.callType);
   }
+
+  // Sau khi xử lý xong thì mới ẩn popup và xóa dữ liệu
+  hideCallPopup();
 }
 
 // Từ chối cuộc gọi đến
