@@ -75,6 +75,30 @@ async function handleOfferWithPopup(fromId, offer) {
   }
 }
 
+// Xử lý offer cho nhóm
+async function handleGroupOffer(fromId, offer) {
+    console.log("Received group offer from:", fromId, "Data:", offer);
+  if (groupPeers[fromId]) return; // đã có kết nối rồi
+
+  const peer = createPeerConnection(fromId, true); // true là group
+  groupPeers[fromId] = peer;
+
+  await peer.setRemoteDescription(new RTCSessionDescription(offer));
+
+  // Add local stream nếu có
+  if (!localStream) {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    setLocalVideo(localStream);
+  }
+
+  localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+
+  const answer = await peer.createAnswer();
+  await peer.setLocalDescription(answer);
+
+  await webrtcHub.invoke("SendSignalToGroup", currentGroupId, userId, "answer", answer);
+}
+
 // Xử lý offer khi user đã chấp nhận
 async function processAcceptedOffer(fromId, offer) {
   try {
