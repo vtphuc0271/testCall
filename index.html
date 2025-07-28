@@ -3,63 +3,9 @@
   <head>
     <title>WebRTC Test</title>
     <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-      .video-container {
-        display: flex;
-        gap: 20px;
-        margin-top: 20px;
-      }
-      video {
-        width: 300px;
-        height: 200px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        background: #000;
-      }
-      button {
-        background: #007bff;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        margin: 5px;
-        border-radius: 5px;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #0056b3;
-      }
-      button:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-      }
-      .status {
-        margin: 10px 0;
-        padding: 10px;
-        border-radius: 5px;
-      }
-      .status.connected {
-        background: #d4edda;
-        color: #155724;
-      }
-      .status.error {
-        background: #f8d7da;
-        color: #721c24;
-      }
-      input {
-        padding: 8px;
-        margin: 5px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-    </style>
   </head>
   <body>
     <h2>WebRTC Test</h2>
@@ -68,10 +14,10 @@
     <div id="status" class="status"></div>
 
     <div>
-      <label
-        >Remote ID:
-        <input id="remoteId" value="user2" placeholder="Nhập ID người nhận"
-      /></label>
+      <label>
+        Remote ID:
+        <input id="remoteId" value="user2" placeholder="Nhập ID người nhận" />
+      </label>
     </div>
 
     <div>
@@ -95,387 +41,32 @@
       </div>
     </div>
 
-    <script>
-      let userId = prompt("Nhập user ID của bạn:", "user1");
-      if (!userId) {
-        alert("Cần phải có User ID để tiếp tục!");
-        location.reload();
-      }
+    <!-- Call Popup -->
+    <div id="callPopup" class="call-popup-overlay" style="display: none;">
+      <div class="call-popup">
+        <h3>📞 Cuộc gọi đến</h3>
+        <div class="call-info">
+          <div class="caller-name" id="callerName">Đang tải...</div>
+          <div class="call-type" id="callType">audio</div>
+          <div class="call-time" id="callTime">Vừa xong</div>
+        </div>
+        <div class="call-buttons">
+          <button class="accept-btn" id="acceptCallBtn">
+            <span class="ringing-animation">📞</span>
+            Nghe máy
+          </button>
+          <button class="reject-btn" id="rejectCallBtn">
+            <span>❌</span>
+            Từ chối
+          </button>
+        </div>
+      </div>
+    </div>
 
-      document.getElementById(
-        "info"
-      ).innerText = `Bạn đang đăng nhập với ID: ${userId}`;
-
-      const remoteIdInput = document.getElementById("remoteId");
-      const statusDiv = document.getElementById("status");
-      const videoCallBtn = document.getElementById("videoCallBtn");
-      const audioCallBtn = document.getElementById("audioCallBtn");
-      const hangupBtn = document.getElementById("hangupBtn");
-
-      let peer,
-        localStream,
-        isInCall = false;
-
-      // Cập nhật trạng thái UI
-      function updateStatus(message, isError = false) {
-        statusDiv.textContent = message;
-        statusDiv.className = `status ${isError ? "error" : "connected"}`;
-      }
-
-      function updateButtonStates() {
-        videoCallBtn.disabled = isInCall;
-        audioCallBtn.disabled = isInCall;
-        hangupBtn.disabled = !isInCall;
-      }
-
-      const notifyHub = new signalR.HubConnectionBuilder()
-        .withUrl("https://api.ltc365.com/hub/notify?userId=" + userId)
-        .build();
-
-      const webrtcHub = new signalR.HubConnectionBuilder()
-        .withUrl("https://api.ltc365.com/hub/webrtc?userId=" + userId)
-        .build();
-
-      // Xử lý nhận cuộc gọi
-      notifyHub.on("ReceiveCall", async (fromUserId, type) => {
-        if (isInCall) {
-          updateStatus("Đang trong cuộc gọi khác, không thể nhận!", true);
-          return;
-        }
-
-        const accept = confirm(
-          `📞 Cuộc gọi ${type} từ ${fromUserId}. Bạn có muốn nhận không?`
-        );
-        if (!accept) return;
-
-        try {
-          const constraints =
-            type === "video"
-              ? { video: true, audio: true }
-              : { video: false, audio: true };
-
-          localStream = await navigator.mediaDevices.getUserMedia(constraints);
-          document.getElementById("localVideo").srcObject = localStream;
-
-          peer = createPeer(fromUserId);
-          localStream
-            .getTracks()
-            .forEach((track) => peer.addTrack(track, localStream));
-
-          isInCall = true;
-          updateButtonStates();
-          updateStatus(`Đang trong cuộc gọi ${type} với ${fromUserId}...`);
-        } catch (error) {
-          console.error("Lỗi khi nhận cuộc gọi:", error);
-          updateStatus("Lỗi khi truy cập camera/microphone!", true);
-        }
-      });
-
-      webrtcHub.on("ReceiveOffer", async (fromId, offer) => {
-        try {
-          console.log("Received offer from:", fromId, "Data:", offer);
-
-          // Kiểm tra dữ liệu offer hợp lệ
-          if (!offer || offer === "null" || offer === "undefined") {
-            console.error("Invalid offer data:", offer);
-            updateStatus("Nhận được offer không hợp lệ!", true);
-            return;
-          }
-
-          if (!peer) {
-            peer = createPeer(fromId);
-          }
-
-          // Parse và validate offer
-          let parsedOffer;
-          try {
-            parsedOffer = JSON.parse(offer);
-          } catch (parseError) {
-            console.error("Failed to parse offer JSON:", parseError);
-            updateStatus("Lỗi parse offer JSON!", true);
-            return;
-          }
-
-          // Kiểm tra offer có đúng format không
-          if (!parsedOffer || !parsedOffer.type || !parsedOffer.sdp) {
-            console.error("Invalid offer format:", parsedOffer);
-            updateStatus("Format offer không hợp lệ!", true);
-            return;
-          }
-
-          await peer.setRemoteDescription(
-            new RTCSessionDescription(parsedOffer)
-          );
-
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-
-          await axios.post("https://api.ltc365.com/api/WebRTC/send-answer", {
-            toUserId: fromId,
-            fromUserId: userId,
-            data: JSON.stringify(answer),
-          });
-
-          updateStatus("Đã gửi answer thành công");
-        } catch (error) {
-          console.error("Lỗi khi xử lý offer:", error);
-          updateStatus("Lỗi khi xử lý offer!", true);
-        }
-      });
-
-      webrtcHub.on("ReceiveAnswer", async (fromId, answer) => {
-        try {
-          console.log("Received answer from:", fromId, "Data:", answer);
-
-          // Kiểm tra dữ liệu answer hợp lệ
-          if (!answer || answer === "null" || answer === "undefined") {
-            console.error("Invalid answer data:", answer);
-            updateStatus("Nhận được answer không hợp lệ!", true);
-            return;
-          }
-
-          if (!peer) {
-            console.error("No peer connection available");
-            updateStatus("Không có kết nối peer!", true);
-            return;
-          }
-
-          // Parse và validate answer
-          let parsedAnswer;
-          try {
-            parsedAnswer = JSON.parse(answer);
-          } catch (parseError) {
-            console.error("Failed to parse answer JSON:", parseError);
-            updateStatus("Lỗi parse answer JSON!", true);
-            return;
-          }
-
-          // Kiểm tra answer có đúng format không
-          if (!parsedAnswer || !parsedAnswer.type || !parsedAnswer.sdp) {
-            console.error("Invalid answer format:", parsedAnswer);
-            updateStatus("Format answer không hợp lệ!", true);
-            return;
-          }
-
-          await peer.setRemoteDescription(
-            new RTCSessionDescription(parsedAnswer)
-          );
-          updateStatus("Kết nối thành công!");
-        } catch (error) {
-          console.error("Lỗi khi xử lý answer:", error);
-          updateStatus("Lỗi khi xử lý answer!", true);
-        }
-      });
-
-      webrtcHub.on("ReceiveIceCandidate", async (fromId, candidate) => {
-        try {
-          console.log(
-            "Received ICE candidate from:",
-            fromId,
-            "Data:",
-            candidate
-          );
-
-          // Kiểm tra dữ liệu candidate hợp lệ
-          if (!candidate || candidate === "null" || candidate === "undefined") {
-            console.error("Invalid candidate data:", candidate);
-            return;
-          }
-
-          if (!peer) {
-            console.error("No peer connection available for ICE candidate");
-            return;
-          }
-
-          if (!peer.remoteDescription) {
-            console.warn(
-              "Remote description not set yet, skipping ICE candidate"
-            );
-            return;
-          }
-
-          // Parse và validate candidate
-          let parsedCandidate;
-          try {
-            parsedCandidate = JSON.parse(candidate);
-          } catch (parseError) {
-            console.error("Failed to parse candidate JSON:", parseError);
-            return;
-          }
-
-          // Kiểm tra candidate có đúng format không
-          if (
-            !parsedCandidate ||
-            typeof parsedCandidate.candidate === "undefined"
-          ) {
-            console.error("Invalid candidate format:", parsedCandidate);
-            return;
-          }
-
-          await peer.addIceCandidate(new RTCIceCandidate(parsedCandidate));
-        } catch (error) {
-          console.error("Lỗi khi thêm ICE candidate:", error);
-        }
-      });
-
-      async function startCall(type) {
-        const toUser = remoteIdInput.value.trim();
-        if (!toUser) {
-          alert("Vui lòng nhập Remote ID!");
-          return;
-        }
-
-        if (toUser === userId) {
-          alert("Không thể gọi cho chính mình!");
-          return;
-        }
-
-        if (isInCall) {
-          alert("Đang trong cuộc gọi khác!");
-          return;
-        }
-
-        try {
-          // Gửi thông báo cuộc gọi
-          await axios.post("https://api.ltc365.com/api/Notify/send-call", {
-            idUsersRecive: toUser,
-            idUserSend: userId,
-            title: "Cuộc gọi đến",
-            message: `Cuộc gọi ${type} từ ${userId}`,
-            type: type,
-            sentAt: new Date().toISOString(),
-          });
-
-          const constraints =
-            type === "video"
-              ? { video: true, audio: true }
-              : { video: false, audio: true };
-
-          localStream = await navigator.mediaDevices.getUserMedia(constraints);
-          document.getElementById("localVideo").srcObject = localStream;
-
-          peer = createPeer(toUser);
-          localStream
-            .getTracks()
-            .forEach((track) => peer.addTrack(track, localStream));
-
-          const offer = await peer.createOffer();
-          await peer.setLocalDescription(offer);
-          console.log("Sending offer:", JSON.stringify(offer));
-          const res = await axios.post(
-            "https://api.ltc365.com/api/WebRTC/send-offer",
-            {
-              toUserId: toUser,
-              fromUserId: userId,
-              Data: JSON.stringify(offer),
-            }
-          );
-          if (res.status !== 200 && res.status !== 204) {
-            throw new Error("send-offer thất bại");
-          }
-
-          isInCall = true;
-          updateButtonStates();
-          updateStatus(`Đang gọi ${type} cho ${toUser}...`);
-        } catch (error) {
-          console.error("Lỗi khi bắt đầu cuộc gọi:", error);
-          updateStatus("Lỗi khi bắt đầu cuộc gọi!", true);
-
-          // Cleanup nếu có lỗi
-          if (localStream) {
-            localStream.getTracks().forEach((track) => track.stop());
-            localStream = null;
-          }
-          if (peer) {
-            peer.close();
-            peer = null;
-          }
-          isInCall = false;
-          updateButtonStates();
-        }
-      }
-
-      function hangup() {
-        if (localStream) {
-          localStream.getTracks().forEach((track) => track.stop());
-          localStream = null;
-        }
-
-        if (peer) {
-          peer.close();
-          peer = null;
-        }
-
-        document.getElementById("localVideo").srcObject = null;
-        document.getElementById("remoteVideo").srcObject = null;
-
-        isInCall = false;
-        updateButtonStates();
-        updateStatus("Đã cúp máy");
-      }
-
-      function createPeer(toUserId) {
-        const pc = new RTCPeerConnection({
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-          ],
-        });
-
-        pc.onicecandidate = async (event) => {
-          if (event.candidate) {
-            try {
-              await axios.post("https://api.ltc365.com/api/WebRTC/send-ice", {
-                toUserId: toUserId,
-                fromUserId: userId,
-                data: JSON.stringify(event.candidate),
-              });
-            } catch (error) {
-              console.error("Lỗi khi gửi ICE candidate:", error);
-            }
-          }
-        };
-
-        pc.ontrack = (event) => {
-          document.getElementById("remoteVideo").srcObject = event.streams[0];
-          updateStatus("Đã kết nối thành công!");
-        };
-
-        pc.onconnectionstatechange = () => {
-          console.log("Connection state:", pc.connectionState);
-          if (
-            pc.connectionState === "failed" ||
-            pc.connectionState === "disconnected"
-          ) {
-            updateStatus("Kết nối bị ngắt!", true);
-          }
-        };
-
-        return pc;
-      }
-
-      async function start() {
-        try {
-          updateStatus("Đang kết nối...");
-
-          await notifyHub.start();
-          await webrtcHub.start();
-
-          console.log("✅ SignalR connected.");
-          updateStatus("Đã kết nối thành công. Sẵn sàng thực hiện cuộc gọi!");
-          updateButtonStates();
-        } catch (err) {
-          console.error("❌ SignalR connection error:", err);
-          updateStatus("Lỗi kết nối SignalR!", true);
-        }
-      }
-
-      // Cleanup khi đóng trang
-      window.addEventListener("beforeunload", () => {
-        hangup();
-      });
-
-      start();
-    </script>
+    <script src="config.js"></script>
+    <script src="ui.js"></script>
+    <script src="webrtc.js"></script>
+    <script src="signalr-handlers.js"></script>
+    <script src="main.js"></script>
   </body>
 </html>
