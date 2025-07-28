@@ -1,3 +1,4 @@
+// ui.js
 // Khởi tạo các DOM elements
 function initializeUI() {
   remoteIdInput = document.getElementById("remoteId");

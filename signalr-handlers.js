@@ -1,4 +1,8 @@
+// signalr-handlers.js
 // Khởi tạo SignalR connections
+// let groupPeers = {}; // key: userId, value: RTCPeerConnection
+// let groupIceQueues = {}; // key: userId, value: array of ICE
+
 function initializeSignalR() {
   notifyHub = new signalR.HubConnectionBuilder()
     .withUrl(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NOTIFY_HUB}?userId=${userId}`)
@@ -101,6 +105,7 @@ async function handleGroupOffer(fromId, offer) {
 
 // Xử lý offer khi user đã chấp nhận
 async function processAcceptedOffer(fromId, offer) {
+    
   try {
     console.log("Processing accepted offer from:", fromId);
     
@@ -223,6 +228,16 @@ async function handleAnswer(fromId, answer) {
   }
 }
 
+// Xử lý ICE candidate cho nhóm
+async function handleGroupAnswer(fromId, answer) {
+    console.log("Received group answer from:", fromId, "Data:", answer);
+  const peer = groupPeers[fromId];
+  if (!peer) return;
+
+  await peer.setRemoteDescription(new RTCSessionDescription(answer));
+}
+
+
 // Xử lý ICE candidate
 async function handleIceCandidate(fromId, candidate) {
   try {
@@ -260,6 +275,43 @@ async function handleIceCandidate(fromId, candidate) {
   } catch (error) {
     console.error("Lỗi khi thêm ICE candidate:", error);
   }
+}
+
+// Xử lý ICE candidate cho nhóm
+async function handleGroupIceCandidate(fromId, candidate) {
+    console.log("Received group ICE candidate from:", fromId, "Data:", candidate);
+  const peer = groupPeers[fromId];
+
+  const ice = new RTCIceCandidate(candidate);
+
+  if (peer && peer.remoteDescription) {
+    await peer.addIceCandidate(ice);
+  } else {
+    if (!groupIceQueues[fromId]) groupIceQueues[fromId] = [];
+    groupIceQueues[fromId].push(ice);
+  }
+}
+
+// Tạo peer connection
+function createPeerConnection(remoteId, isGroup = false) {
+  const peer = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+  peer.onicecandidate = (event) => {
+    if (event.candidate) {
+      if (isGroup) {
+        webrtcHub.invoke("SendSignalToGroup", currentGroupId, userId, "ice-candidate", event.candidate);
+        console.log("Group ICE candidate sent for user:", webrtcHub);
+      } else {
+        webrtcHub.invoke("SendIceCandidate", userId, remoteId, JSON.stringify(event.candidate));
+      }
+    }
+  };
+
+  peer.ontrack = (event) => {
+    setRemoteVideo(remoteId, event.streams[0]); // tạo nhiều video
+  };
+
+  return peer;
 }
 
 // Xử lý các ICE candidate đã được queue

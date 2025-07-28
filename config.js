@@ -1,3 +1,4 @@
+// config.js
 // Cấu hình API endpoints
 const API_CONFIG = {
   BASE_URL: 'https://api.ltc365.com',
@@ -41,3 +42,6 @@ let rejectCallBtn = null;
 let pendingCall = null;
 let pendingOffer = null; // Lưu offer đang chờ xử lý
 let pendingIceCandidates = []; // Queue ICE candidates khi chưa có peer
+
+// Group call peers
+let currentGroupId = null;

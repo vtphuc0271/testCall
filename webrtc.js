@@ -1,4 +1,8 @@
+// webrtc.js
 // Khởi tạo SignalR connections
+let groupPeers = {}; // key: userId, value: RTCPeerConnection
+let groupIceQueues = {}; // key: userId, value: array of ICE
+
 function initializeSignalR() {
   notifyHub = new signalR.HubConnectionBuilder()
     .withUrl(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NOTIFY_HUB}?userId=${userId}`)
@@ -313,7 +317,8 @@ async function startCall(type) {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
 
-    //console.log("Sending offer:", JSON.stringify(offer));
+    console.log("Sending offer:", JSON.stringify(offer));
+    console.log("webrtcHub:", webrtcHub);
     await webrtcHub.invoke('SendOffer', userId, toUser, JSON.stringify(offer));
     console.log("Offer sent successfully");
 

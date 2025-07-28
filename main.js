@@ -1,3 +1,4 @@
+// main.js
 // Khởi tạo ứng dụng
 async function initializeApp() {
   // Khởi tạo UI
@@ -38,5 +39,36 @@ async function connectSignalR() {
   }
 }
 
+async function startGroupCall(groupId, members) {
+    console.log("Starting group call in room:", groupId);
+  currentGroupId = groupId;
+
+  // Lấy stream
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  setLocalVideo(localStream);
+
+  for (const memberId of members) {
+    if (memberId === getUserId()) continue;
+
+    const peer = createPeerConnection(memberId, true); // isGroup = true
+    groupPeers[memberId] = peer;
+
+    localStream.getTracks().forEach(track => peer.addTrack(track, localStream));
+
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+
+    await webrtcHub.invoke("SendSignalToGroup", groupId, getUserId(), "offer", offer);
+  }
+}
+
 // Khởi chạy ứng dụng khi DOM đã sẵn sàng
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+document.addEventListener("keydown", async (e) => {
+  if (e.key === "F2") {
+    const groupId = "room1";
+    const members = ["user1", "user2", "user3"]; // phải thay bằng danh sách thật từ server
+    await startGroupCall(groupId, members);
+  }
+});
