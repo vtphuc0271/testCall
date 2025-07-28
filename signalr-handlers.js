@@ -120,11 +120,15 @@ async function processAcceptedOffer(fromId, offer) {
     await peer.setLocalDescription(answer);
 
     console.log("Sending answer to:", fromId);
-    await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEND_ANSWER}`, {
-      toUserId: fromId,
-      fromUserId: userId,
-      data: JSON.stringify(answer),
-    });
+    try {
+      await webrtcHub.invoke('SendAnswer', userId, fromId, JSON.stringify(answer));
+      console.log("Answer sent successfully");
+    } catch (invokeError) {
+      console.error("Failed to send answer via invoke:", invokeError);
+      updateStatus("Lỗi khi gửi answer!", true);
+      cleanupCall();
+      return;
+    }
 
     // Cập nhật trạng thái
     isInCall = true;
@@ -162,6 +166,14 @@ async function handleAnswer(fromId, answer) {
       return;
     }
 
+    // Kiểm tra trạng thái peer connection
+    console.log("Peer connection state:", peer.signalingState);
+    if (peer.signalingState !== "have-local-offer") {
+      console.error("Peer connection in wrong state for answer:", peer.signalingState);
+      updateStatus(`Trạng thái peer không đúng: ${peer.signalingState}`, true);
+      return;
+    }
+
     let parsedAnswer;
     try {
       parsedAnswer = JSON.parse(answer);
@@ -177,7 +189,9 @@ async function handleAnswer(fromId, answer) {
       return;
     }
 
+    console.log("Setting remote description with answer...");
     await peer.setRemoteDescription(new RTCSessionDescription(parsedAnswer));
+    console.log("Remote description set successfully");
     updateStatus("Kết nối thành công!");
   } catch (error) {
     console.error("Lỗi khi xử lý answer:", error);
