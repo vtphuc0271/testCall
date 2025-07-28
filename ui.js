@@ -135,7 +135,7 @@ async function acceptIncomingCall() {
 async function rejectIncomingCall() {
   if (!pendingCall) return;
   
-  const fromUserId = pendingCall.fromUserId;\
+  const fromUserId = pendingCall.fromUserId;
   cleanupCall();
   updateStatus(`Đã từ chối cuộc gọi từ ${fromUserId}`);
   hideCallPopup();
