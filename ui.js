@@ -135,14 +135,12 @@ async function acceptIncomingCall() {
 async function rejectIncomingCall() {
   if (!pendingCall) return;
   
-  const fromUserId = pendingCall.fromUserId;
-  hideCallPopup();
+  const fromUserId = pendingCall.fromUserId;\
   cleanupCall();
-  updateStatus("Đã từ chối cuộc gọi");
+  updateStatus(`Đã từ chối cuộc gọi từ ${fromUserId}`);
+  hideCallPopup();
   // Clear pending data khi từ chối
   pendingIceCandidates = [];
-  
-  updateStatus(`Đã từ chối cuộc gọi từ ${fromUserId}`);
 }
 
 // Phát âm thanh chuông (có thể tùy chỉnh)
