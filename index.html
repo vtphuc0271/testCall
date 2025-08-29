@@ -1,43 +1,86 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>WebRTC Test</title>
+    <title>WebRTC Test - 1-1 & Nhóm</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   </head>
   <body>
-    <h2>WebRTC Test</h2>
+    <h2>WebRTC Test - Gọi 1-1 & Nhóm</h2>
 
     <div id="info"></div>
     <div id="status" class="status"></div>
 
-    <div>
-      <label>
-        Remote ID:
-        <input id="remoteId" value="user2" placeholder="Nhập ID người nhận" />
-      </label>
+    <div class="container">
+      <!-- Gọi 1-1 -->
+      <div class="call-section">
+        <h3>Gọi 1-1</h3>
+        <div>
+          <label>
+            Remote ID:
+            <input id="remoteId" value="user2" placeholder="Nhập ID người nhận" />
+          </label>
+        </div>
+
+        <div>
+          <button id="videoCallBtn" onclick="startCall('video')">
+            📹 Gọi video
+          </button>
+          <button id="audioCallBtn" onclick="startCall('audio')">
+            🎧 Gọi audio
+          </button>
+        </div>
+      </div>
+
+      <!-- Gọi nhóm -->
+      <div class="call-section">
+        <h3>Gọi nhóm</h3>
+        <div>
+          <label>
+            Group ID:
+            <input id="groupId" placeholder="Nhập ID nhóm (để trống để tạo mới)" />
+          </label>
+        </div>
+
+        <div>
+          <button id="createGroupBtn" onclick="createGroupCall()">
+            🆕 Tạo nhóm
+          </button>
+          <button id="joinGroupBtn" onclick="joinGroupCall()">
+            ➕ Tham gia nhóm
+          </button>
+          <button id="leaveGroupBtn" onclick="leaveGroupCall()" disabled>
+            👋 Rời nhóm
+          </button>
+        </div>
+      </div>
+
+      <!-- Nút chung -->
+      <div>
+        <button id="hangupBtn" onclick="hangup()" disabled>📞 Kết thúc cuộc gọi</button>
+      </div>
     </div>
 
-    <div>
-      <button id="videoCallBtn" onclick="startCall('video')">
-        📹 Gọi video
-      </button>
-      <button id="audioCallBtn" onclick="startCall('audio')">
-        🎧 Gọi audio
-      </button>
-      <button id="hangupBtn" onclick="hangup()" disabled>📞 Cúp máy</button>
-    </div>
-
+    <!-- Video containers -->
     <div class="video-container">
       <div>
         <h4>Video của bạn</h4>
         <video id="localVideo" autoplay muted playsinline></video>
       </div>
-      <div>
+      <div id="remoteVideoContainer">
         <h4>Video đối phương</h4>
         <video id="remoteVideo" autoplay playsinline></video>
       </div>
+    </div>
+
+    <!-- Group call container -->
+    <div id="groupCallContainer" class="group-call-container" style="display: none;">
+      <h3>Cuộc gọi nhóm: <span id="currentGroupId"></span></h3>
+      <div class="group-members-header">
+        <h4>Thành viên trong nhóm (<span id="memberCount">0</span>)</h4>
+      </div>
+      <div id="remoteVideos" class="remote-videos-grid"></div>
     </div>
 
     <!-- Call Popup -->

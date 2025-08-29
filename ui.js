@@ -2,10 +2,16 @@
 // Khởi tạo các DOM elements
 function initializeUI() {
   remoteIdInput = document.getElementById("remoteId");
+  groupIdInput = document.getElementById("groupId");
   statusDiv = document.getElementById("status");
   videoCallBtn = document.getElementById("videoCallBtn");
   audioCallBtn = document.getElementById("audioCallBtn");
   hangupBtn = document.getElementById("hangupBtn");
+  createGroupBtn = document.getElementById("createGroupBtn");
+  joinGroupBtn = document.getElementById("joinGroupBtn");
+  leaveGroupBtn = document.getElementById("leaveGroupBtn");
+  currentGroupIdSpan = document.getElementById("currentGroupId");
+  memberCountSpan = document.getElementById("memberCount");
   
   // Call popup elements
   callPopup = document.getElementById("callPopup");
@@ -37,6 +43,9 @@ function updateButtonStates() {
   if (videoCallBtn) videoCallBtn.disabled = isInCall;
   if (audioCallBtn) audioCallBtn.disabled = isInCall;
   if (hangupBtn) hangupBtn.disabled = !isInCall;
+  if (createGroupBtn) createGroupBtn.disabled = isInCall;
+  if (joinGroupBtn) joinGroupBtn.disabled = isInCall;
+  if (leaveGroupBtn) leaveGroupBtn.disabled = !isGroupCall;
 }
 
 // Lấy User ID từ người dùng
@@ -68,6 +77,14 @@ function setRemoteVideo(stream) {
   }
 }
 
+// Hiển thị video remote cho nhóm
+function setGroupRemoteVideo(memberId, stream) {
+  const videoElement = document.getElementById(`remoteVideo-${memberId}`);
+  if (videoElement) {
+    videoElement.srcObject = stream;
+  }
+}
+
 // Xóa video streams
 function clearVideos() {
   const localVideo = document.getElementById("localVideo");
@@ -79,19 +96,21 @@ function clearVideos() {
 
 // Hiển thị popup cuộc gọi đến
 function showCallPopup(fromUserId, callType, offerData = null) {
-    console.log("Showing call popup");
+  console.log("Showing call popup");
   if (callPopup) {
     // Cập nhật thông tin cuộc gọi
     if (callerNameDiv) callerNameDiv.textContent = fromUserId;
     if (callTypeDiv) callTypeDiv.textContent = `Cuộc gọi ${callType}`;
     if (callTimeDiv) callTimeDiv.textContent = new Date().toLocaleTimeString();
     console.log("offerData received in showCallPopup:", offerData);
+    
     // Lưu thông tin cuộc gọi và offer (nếu có)
     pendingCall = { fromUserId, callType };
     if (offerData) {
       pendingOffer = { fromId: fromUserId, offer: offerData };
     }
     console.log("Pending call data set:", pendingOffer);
+    
     // Hiển thị popup
     callPopup.style.display = 'flex';
     
@@ -106,7 +125,6 @@ function hideCallPopup() {
     callPopup.style.display = 'none';
     pendingCall = null;
     pendingOffer = null;
-    // Không clear pendingIceCandidates ở đây vì có thể cần dùng
     stopRingtone();
   }
 }
@@ -123,11 +141,9 @@ async function acceptIncomingCall() {
     await processAcceptedOffer(pendingOffer.fromId, pendingOffer.offer);
   } else {
     console.log("No pending offer, setting up media only...");
-    // Fallback: chỉ setup media nếu không có offer
     await handleIncomingCall(pendingCall.fromUserId, pendingCall.callType);
   }
 
-  // Sau khi xử lý xong thì mới ẩn popup và xóa dữ liệu
   hideCallPopup();
 }
 
@@ -139,13 +155,76 @@ async function rejectIncomingCall() {
   cleanupCall();
   updateStatus(`Đã từ chối cuộc gọi từ ${fromUserId}`);
   hideCallPopup();
-  // Clear pending data khi từ chối
   pendingIceCandidates = [];
 }
 
-// Phát âm thanh chuông (có thể tùy chỉnh)
+// Khởi tạo UI cho cuộc gọi nhóm
+function initializeGroupCallUI(members) {
+  // Xóa UI cũ
+  const remoteVideosContainer = document.getElementById('remoteVideos');
+  remoteVideosContainer.innerHTML = '';
+  
+  // Thêm UI cho các thành viên
+  members.forEach(memberId => {
+    if (memberId !== userId) {
+      addGroupMemberUI(memberId);
+    }
+  });
+  
+  // Cập nhật số lượng thành viên
+  if (memberCountSpan) {
+    memberCountSpan.textContent = members.length;
+  }
+  
+  // Hiển thị container cho video nhóm
+  document.getElementById('groupCallContainer').style.display = 'block';
+}
+
+// Thêm UI thành viên nhóm
+function addGroupMemberUI(memberId) {
+  const remoteVideosContainer = document.getElementById('remoteVideos');
+  
+  // Kiểm tra xem đã có video cho thành viên này chưa
+  if (!document.getElementById(`remoteVideo-${memberId}`)) {
+    const videoContainer = document.createElement('div');
+    videoContainer.className = 'remote-video-container';
+    videoContainer.id = `remoteVideoContainer-${memberId}`;
+    
+    const video = document.createElement('video');
+    video.id = `remoteVideo-${memberId}`;
+    video.autoplay = true;
+    video.playsInline = true;
+    
+    const label = document.createElement('div');
+    label.className = 'video-label';
+    label.textContent = memberId;
+    
+    videoContainer.appendChild(video);
+    videoContainer.appendChild(label);
+    remoteVideosContainer.appendChild(videoContainer);
+  }
+}
+
+// Xóa UI thành viên nhóm
+function removeGroupMemberUI(memberId) {
+  const videoContainer = document.getElementById(`remoteVideoContainer-${memberId}`);
+  if (videoContainer) {
+    videoContainer.remove();
+  }
+}
+
+// Cập nhật thông tin nhóm
+function updateGroupInfo(groupId, memberCount) {
+  if (currentGroupIdSpan) {
+    currentGroupIdSpan.textContent = groupId;
+  }
+  if (memberCountSpan) {
+    memberCountSpan.textContent = memberCount;
+  }
+}
+
+// Phát âm thanh chuông
 function playRingtone() {
-  // Có thể thêm audio element để phát âm thanh chuông
   console.log("🔔 Playing ringtone...");
 }
 
