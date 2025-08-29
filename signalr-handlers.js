@@ -1,11 +1,7 @@
 // signalr-handlers.js
-// Khởi tạo SignalR connections
-let groupPeers = {}; // key: userId, value: RTCPeerConnection
-let groupIceQueues = {}; // key: userId, value: array of ICE
-
-// Biến toàn cục mới
-let currentGroupId = null;
-let isGroupCall = false;
+// XÓA các dòng này:
+// let groupPeers = {}; // key: userId, value: RTCPeerConnection
+// let groupIceQueues = {}; // key: userId, value: array of ICE
 
 function initializeSignalR() {
   notifyHub = new signalR.HubConnectionBuilder()

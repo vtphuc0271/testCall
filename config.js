@@ -51,7 +51,7 @@ let pendingCall = null;
 let pendingOffer = null;
 let pendingIceCandidates = [];
 
-// Group call variables
+// Group call variables - THÊM vào đây
 let currentGroupId = null;
 let isGroupCall = false;
 let groupPeers = {};

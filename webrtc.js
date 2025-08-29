@@ -1,120 +1,120 @@
-// webrtc.js
-// Khởi tạo SignalR connections
-let groupPeers = {}; // key: userId, value: RTCPeerConnection
-let groupIceQueues = {}; // key: userId, value: array of ICE
+// // webrtc.js
+// // Khởi tạo SignalR connections
+// let groupPeers = {}; // key: userId, value: RTCPeerConnection
+// let groupIceQueues = {}; // key: userId, value: array of ICE
 
-// Biến toàn cục mới
-let currentGroupId = null;
-let isGroupCall = false;
+// // Biến toàn cục mới
+// let currentGroupId = null;
+// let isGroupCall = false;
 
-function initializeSignalR() {
-  notifyHub = new signalR.HubConnectionBuilder()
-    .withUrl(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NOTIFY_HUB}?userId=${userId}`)
-    .build();
+// function initializeSignalR() {
+//   notifyHub = new signalR.HubConnectionBuilder()
+//     .withUrl(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NOTIFY_HUB}?userId=${userId}`)
+//     .build();
 
-  webrtcHub = new signalR.HubConnectionBuilder()
-    .withUrl(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WEBRTC_HUB}?userId=${userId}`)
-    .build();
-}
+//   webrtcHub = new signalR.HubConnectionBuilder()
+//     .withUrl(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.WEBRTC_HUB}?userId=${userId}`)
+//     .build();
+// }
 
-// Đăng ký các event handlers
-function registerSignalRHandlers() {
-  // Chỉ sử dụng ReceiveOffer để hiển thị popup và xử lý cuộc gọi
-  webrtcHub.on("ReceiveOffer", async (fromId, offer) => {
-    // Kiểm tra xem có phải là group call không
-    if (isGroupCall && currentGroupId) {
-      await handleGroupOffer(fromId, offer);
-    } else {
-      await handleOfferWithPopup(fromId, offer);
-    }
-  });
+// // Đăng ký các event handlers
+// function registerSignalRHandlers() {
+//   // Chỉ sử dụng ReceiveOffer để hiển thị popup và xử lý cuộc gọi
+//   webrtcHub.on("ReceiveOffer", async (fromId, offer) => {
+//     // Kiểm tra xem có phải là group call không
+//     if (isGroupCall && currentGroupId) {
+//       await handleGroupOffer(fromId, offer);
+//     } else {
+//       await handleOfferWithPopup(fromId, offer);
+//     }
+//   });
 
-  // Xử lý nhận answer
-  webrtcHub.on("ReceiveAnswer", async (fromId, answer) => {
-    if (isGroupCall && currentGroupId) {
-      await handleGroupAnswer(fromId, answer);
-    } else {
-      await handleAnswer(fromId, answer);
-    }
-  });
+//   // Xử lý nhận answer
+//   webrtcHub.on("ReceiveAnswer", async (fromId, answer) => {
+//     if (isGroupCall && currentGroupId) {
+//       await handleGroupAnswer(fromId, answer);
+//     } else {
+//       await handleAnswer(fromId, answer);
+//     }
+//   });
 
-  // Xử lý nhận ICE candidate
-  webrtcHub.on("ReceiveIceCandidate", async (fromId, candidate) => {
-    if (isGroupCall && currentGroupId) {
-      await handleGroupIceCandidate(fromId, candidate);
-    } else {
-      await handleIceCandidate(fromId, candidate);
-    }
-  });
+//   // Xử lý nhận ICE candidate
+//   webrtcHub.on("ReceiveIceCandidate", async (fromId, candidate) => {
+//     if (isGroupCall && currentGroupId) {
+//       await handleGroupIceCandidate(fromId, candidate);
+//     } else {
+//       await handleIceCandidate(fromId, candidate);
+//     }
+//   });
 
-  // Xử lý tín hiệu chung (cho cả 1-1 và nhóm)
-  webrtcHub.on("ReceiveSignal", async (signalData) => {
-    const { type, fromUserId, data } = signalData;
+//   // Xử lý tín hiệu chung (cho cả 1-1 và nhóm)
+//   webrtcHub.on("ReceiveSignal", async (signalData) => {
+//     const { type, fromUserId, data } = signalData;
     
-    if (type === "offer") {
-      if (isGroupCall && currentGroupId) {
-        await handleGroupOffer(fromUserId, data);
-      } else {
-        await handleOfferWithPopup(fromUserId, data);
-      }
-    } else if (type === "answer") {
-      if (isGroupCall && currentGroupId) {
-        await handleGroupAnswer(fromUserId, data);
-      } else {
-        await handleAnswer(fromUserId, data);
-      }
-    } else if (type === "ice-candidate") {
-      if (isGroupCall && currentGroupId) {
-        await handleGroupIceCandidate(fromUserId, data);
-      } else {
-        await handleIceCandidate(fromUserId, data);
-      }
-    }
-  });
+//     if (type === "offer") {
+//       if (isGroupCall && currentGroupId) {
+//         await handleGroupOffer(fromUserId, data);
+//       } else {
+//         await handleOfferWithPopup(fromUserId, data);
+//       }
+//     } else if (type === "answer") {
+//       if (isGroupCall && currentGroupId) {
+//         await handleGroupAnswer(fromUserId, data);
+//       } else {
+//         await handleAnswer(fromUserId, data);
+//       }
+//     } else if (type === "ice-candidate") {
+//       if (isGroupCall && currentGroupId) {
+//         await handleGroupIceCandidate(fromUserId, data);
+//       } else {
+//         await handleIceCandidate(fromUserId, data);
+//       }
+//     }
+//   });
 
-  // Xử lý sự kiện nhóm
-  webrtcHub.on("UserJoinedGroup", (userId) => {
-    console.log(`User ${userId} joined the group`);
-    if (isGroupCall) {
-      addGroupMemberUI(userId);
-    }
-  });
+//   // Xử lý sự kiện nhóm
+//   webrtcHub.on("UserJoinedGroup", (userId) => {
+//     console.log(`User ${userId} joined the group`);
+//     if (isGroupCall) {
+//       addGroupMemberUI(userId);
+//     }
+//   });
 
-  webrtcHub.on("UserLeftGroup", (userId) => {
-    console.log(`User ${userId} left the group`);
-    if (isGroupCall) {
-      removeGroupMemberUI(userId);
-      cleanupGroupPeer(userId);
-    }
-  });
+//   webrtcHub.on("UserLeftGroup", (userId) => {
+//     console.log(`User ${userId} left the group`);
+//     if (isGroupCall) {
+//       removeGroupMemberUI(userId);
+//       cleanupGroupPeer(userId);
+//     }
+//   });
 
-  webrtcHub.on("GroupMembers", (members) => {
-    console.log("Group members received:", members);
-    if (isGroupCall) {
-      initializeGroupCallUI(members);
-    }
-  });
+//   webrtcHub.on("GroupMembers", (members) => {
+//     console.log("Group members received:", members);
+//     if (isGroupCall) {
+//       initializeGroupCallUI(members);
+//     }
+//   });
 
-  webrtcHub.on("UserJoinedCall", (userId) => {
-    console.log(`User ${userId} joined the call`);
-    if (isGroupCall) {
-      addGroupMemberUI(userId);
-    }
-  });
+//   webrtcHub.on("UserJoinedCall", (userId) => {
+//     console.log(`User ${userId} joined the call`);
+//     if (isGroupCall) {
+//       addGroupMemberUI(userId);
+//     }
+//   });
 
-  webrtcHub.on("UserLeftCall", (userId) => {
-    console.log(`User ${userId} left the call`);
-    if (isGroupCall) {
-      removeGroupMemberUI(userId);
-      cleanupGroupPeer(userId);
-    }
-  });
+//   webrtcHub.on("UserLeftCall", (userId) => {
+//     console.log(`User ${userId} left the call`);
+//     if (isGroupCall) {
+//       removeGroupMemberUI(userId);
+//       cleanupGroupPeer(userId);
+//     }
+//   });
 
-  webrtcHub.on("GroupCallEnded", (userId) => {
-    console.log(`Group call ended by ${userId}`);
-    endGroupCall();
-  });
-}
+//   webrtcHub.on("GroupCallEnded", (userId) => {
+//     console.log(`Group call ended by ${userId}`);
+//     endGroupCall();
+//   });
+// }
 
 // Xử lý offer với popup - chờ user quyết định
 async function handleOfferWithPopup(fromId, offer) {

@@ -48,6 +48,12 @@ async function connectSignalR() {
 
 // Tạo cuộc gọi nhóm
 async function createGroupCall() {
+  // Kiểm tra kết nối
+  if (!webrtcHub || webrtcHub.state !== signalR.HubConnectionState.Connected) {
+    updateStatus("Chưa kết nối đến server. Vui lòng chờ...", true);
+    return;
+  }
+  
   const groupId = groupIdInput.value.trim() || null;
   
   try {
